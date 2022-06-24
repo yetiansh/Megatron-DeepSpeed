@@ -10,8 +10,8 @@ nodes=1
 gpus=1
 
 
-use_tutel=""
-#use_tutel="--use-tutel"
+# use_tutel=""
+use_tutel="--use-tutel"
 
 
 #ds_inference=""

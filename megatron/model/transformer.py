@@ -452,7 +452,8 @@ class ParallelTransformerLayer(MegatronModule):
                 moe_mp_size = 1
             else:
                 moe_mp_size = dist.get_world_size() // self.num_experts
-            
+
+            # Use DeepSpeed MoE impl, can dump dispatch output.
             self.mlp = MoE(args.hidden_size,
                             ParallelMLP(init_method,
                                 output_layer_init_method=output_layer_init_method,
