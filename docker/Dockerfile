@@ -1,3 +1,4 @@
+# according to recommendation of lastest compatible container
 FROM nvcr.io/nvidia/pytorch:20.12-py3
 
 RUN apt-get update \
@@ -24,11 +25,13 @@ ENV LD_LIBRARY_PATH=/usr/local/cuda/extras/CUPTI/lib64:/opt/amazon/openmpi/lib:/
 ENV PATH=/opt/amazon/openmpi/bin:/opt/amazon/efa/bin:$PATH
 
 # install aws efa software
-RUN cd $HOME \
-    && curl -O https://efa-installer.amazonaws.com/aws-efa-installer-${EFA_INSTALLER_VERSION}.tar.gz \
-    && tar -xf $HOME/aws-efa-installer-${EFA_INSTALLER_VERSION}.tar.gz \
-    && cd aws-efa-installer \
-    && ./efa_installer.sh -y -g -d --skip-kmod --skip-limit-conf --no-verify
+# it looks like EFA contradicts with nvcr.io/nvidia/pytorch:20.12-py3.
+# should install when switch to nvidia/cuda:10.2-cudnn8-devel-ubuntu18.04
+# RUN cd $HOME \
+#     && curl -O https://efa-installer.amazonaws.com/aws-efa-installer-${EFA_INSTALLER_VERSION}.tar.gz \
+#     && tar -xf $HOME/aws-efa-installer-${EFA_INSTALLER_VERSION}.tar.gz \
+#     && cd aws-efa-installer \
+#     && ./efa_installer.sh -y -g -d --skip-kmod --skip-limit-conf --no-verify
 
 ## Install NCCL
 RUN git clone https://github.com/NVIDIA/nccl /opt/nccl \
