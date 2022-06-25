@@ -109,6 +109,7 @@ RUN python3 -m pip install -r /requirements.txt
 
 # install apex
 RUN git clone https://github.com/NVIDIA/apex /apex && cd /apex && \
+    MAKEFLAGS="-j$(nproc-2)" \
     pip install -v --disable-pip-version-check \
-                   --no-cache-dir --global-option="--cpp_ext" \
-                   --global-option="--cuda_ext" ./
+        --no-cache-dir --global-option="--cpp_ext" \
+        --global-option="--cuda_ext" ./
