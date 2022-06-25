@@ -22,6 +22,7 @@ import math
 import os
 import time
 import collections
+from megatron import print_rank_0
 
 import numpy as np
 import torch
@@ -46,6 +47,7 @@ def get_datasets_weights_and_num_samples(data_prefix,
 
     # The data prefix should be in the format of:
     #   weight-1, data-prefix-1, weight-2, data-prefix-2, ..
+    print_rank_0(f"data_prefix: {str(data_prefix)}")
     assert len(data_prefix) % 2 == 0
     num_datasets = len(data_prefix) // 2
     weights = [0]*num_datasets
@@ -56,7 +58,9 @@ def get_datasets_weights_and_num_samples(data_prefix,
     # Normalize weights
     weight_sum = 0.0
     for weight in weights:
+        print_rank_0(f"weight: {weight}")
         weight_sum += weight
+    print_rank_0(f"weight_sum: {weight_sum}")
     assert weight_sum > 0.0
     weights = [weight / weight_sum for weight in weights]
 

@@ -14,7 +14,7 @@ MODEL_SIZE=0.125
 NUM_LAYERS=12
 HIDDEN_SIZE=768
 NUM_ATTN_HEADS=12
-GLOBAL_BATCH_SIZE=256
+GLOBAL_BATCH_SIZE=64
 # LR=6.0e-4
 # MIN_LR=6.0e-5
 
@@ -110,7 +110,7 @@ LR_DECAY_TOKENS=300000000000
 ### Parallelism configs
 ## Micro batch size per GPU
 ## Make sure that BATCH_SIZE <= GLOBAL_BATCH_SIZE*PP_SIZE*MP_SIZE/NUM_GPUS
-BATCH_SIZE=4
+BATCH_SIZE=8
 
 ## Model parallelism, 1 is no MP
 ## Currently MoE models have divergence issue when MP > 1.
@@ -251,7 +251,7 @@ else
     # For cluster Azure-EastUS-V100-32GB-4, Lab-RR1-V100
     DATA_BLEND=/Megatron-DeepSpeed/data/PhilPapersDataset_text_document
     # For cluster Azure-WestUS3-A100
-    # DATA_PATH=/blob/data/the_pile_public_merged_nopreprocessing/pile_text_document
+    DATA_PATH=/Megatron-DeepSpeed/data/PhilPapersDataset_text_document
 fi
 ###############################################################################
 data_options=" \
