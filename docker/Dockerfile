@@ -1,5 +1,6 @@
 # according to recommendation of lastest compatible container
-FROM nvcr.io/nvidia/pytorch:20.12-py3
+# FROM nvcr.io/nvidia/pytorch:20.12-py3
+FROM nvidia/cuda:10.2-cudnn8-devel-ubuntu18.04
 
 RUN apt-get update \
   && apt-get install -y python3-pip python3-dev git curl sudo wget ccache libz-dev \
@@ -27,11 +28,11 @@ ENV PATH=/opt/amazon/openmpi/bin:/opt/amazon/efa/bin:$PATH
 # install aws efa software
 # it looks like EFA contradicts with nvcr.io/nvidia/pytorch:20.12-py3.
 # should install when switch to nvidia/cuda:10.2-cudnn8-devel-ubuntu18.04
-# RUN cd $HOME \
-#     && curl -O https://efa-installer.amazonaws.com/aws-efa-installer-${EFA_INSTALLER_VERSION}.tar.gz \
-#     && tar -xf $HOME/aws-efa-installer-${EFA_INSTALLER_VERSION}.tar.gz \
-#     && cd aws-efa-installer \
-#     && ./efa_installer.sh -y -g -d --skip-kmod --skip-limit-conf --no-verify
+RUN cd $HOME \
+    && curl -O https://efa-installer.amazonaws.com/aws-efa-installer-${EFA_INSTALLER_VERSION}.tar.gz \
+    && tar -xf $HOME/aws-efa-installer-${EFA_INSTALLER_VERSION}.tar.gz \
+    && cd aws-efa-installer \
+    && ./efa_installer.sh -y -g -d --skip-kmod --skip-limit-conf --no-verify
 
 ## Install NCCL
 RUN git clone https://github.com/NVIDIA/nccl /opt/nccl \
@@ -71,7 +72,7 @@ RUN chmod -R 600 ${SSHDIR}* && \
 RUN rm -fr ${HOME}/.openmpi && mkdir -p ${HOME}/.openmpi
 RUN chown -R ${USER}:${USER} ${HOME}/.openmpi
 
-RUN python3 -m pip install --upgrade pip
+RUN python3 -m pip install --upgrade pip && python3 -m pip install tqdm
 
 # Download checkpoint and datasets for model training
 RUN git clone --recursive https://github.com/yetiansh/Megatron-DeepSpeed.git /Megatron-DeepSpeed && \
@@ -101,10 +102,15 @@ RUN python -c "import deepspeed; print(deepspeed.__version__)"
 # Change to root privilege
 USER root
 
-# Python dependencies
+# install Tutel and python dependencies
 ADD ./resources/requirements.txt /requirements.txt
 RUN python3 -m pip install --user --upgrade git+https://github.com/microsoft/tutel@v0.1.x
 RUN python3 -m pip install -r /requirements.txt
 
-# Modify experiment scripts
-RUN rm -f ${STAGE_DIR}
+# install apex
+RUN git clone https://github.com/NVIDIA/apex /apex && cd /apex && \
+    pip install -v --disable-pip-version-check \
+                   --no-cache-dir --global-option="--cpp_ext" \
+                   --global-option="--cuda_ext" ./
+
+RUN rm -rf ${STAGE_DIR}
