@@ -1,4 +1,5 @@
 #!/bin/bash
+# Setting BATCH=8 would use 15 / 16 GB of V100 GPU on p3.16xlarge
 DIR=`pwd`
 ###############################################################################
 ### Main configs
@@ -303,7 +304,8 @@ megatron_options=" \
         --log-timers-to-tensorboard \
         --log-batch-size-to-tensorboard \
         --log-validation-ppl-to-tensorboard \
-        --tensorboard-dir ${TENSORBOARD_DIR}"
+        --tensorboard-dir ${TENSORBOARD_DIR} \
+        --use-tutel"
 
 if [ "${ACTIVATION_CHECKPOINT}" = "true" ]; then
 megatron_options="${megatron_options} \
@@ -369,6 +371,8 @@ if [[ $ITERATION -gt 0 ]]; then
     ds_ssh "echo $ITERATION > $ITERATION_FILE"
     ds_ssh "echo $ITERATION_2 > $ITERATION_FILE_2"
 fi
+
+DUMP_DISPATH_PREFIX=${OUTPUT_BASEPATH}/dispatch_${NAME}_${current_time}
 
 run_cmd="deepspeed ${DIR}/../../pretrain_gpt.py ${megatron_options} ${data_options} ${deepspeed_options} &> ${OUTPUT_BASEPATH}/log/${NAME}_${host}_${current_time}.log"
 echo ${run_cmd}
