@@ -79,6 +79,7 @@ RUN echo "checkpoint"
 RUN git clone --recursive https://github.com/yetiansh/Megatron-DeepSpeed.git /Megatron-DeepSpeed && \
     cd /Megatron-DeepSpeed && git checkout origin/exp && \
     ./ds_download_ckpt.sh && python3 download_dataset.py
+RUN cd /Megatron-DeepSpeed && git fetch origin && git checkout origin/exp
 
 ##############################################################################
 ## Add deepspeed user
