@@ -15,6 +15,7 @@
 
 """Pretrain utilities."""
 
+import os
 from datetime import datetime
 import math
 import sys
@@ -856,12 +857,14 @@ def train(forward_step_func, model, optimizer, lr_scheduler,
 
     # Iterations.
     iteration = args.iteration
+    os.environ["TRAIN_ITERATION"] = str(iteration)
 
     timers('interval-time').start()
     print_datetime('before the start of training step')
     report_memory_flag = True
     while iteration < args.train_iters and (args.train_tokens is None or \
         args.consumed_train_tokens < args.train_tokens):
+        os.environ["TRAIN_ITERATION"] = str(iteration)
         update_num_microbatches(args.consumed_train_samples)
         if args.deepspeed:
             # inform deepspeed of any batch size changes
