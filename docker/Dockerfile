@@ -110,8 +110,8 @@ RUN python3 -m pip install --user --upgrade git+https://github.com/microsoft/tut
 RUN python3 -m pip install -r /requirements.txt
 
 # install apex
+ENV MAX_JOBS=32
 RUN git clone https://github.com/NVIDIA/apex /apex && cd /apex && \
-    MAKEFLAGS="-j$(nproc-2)" \
     pip install -v --disable-pip-version-check \
         --no-cache-dir --global-option="--cpp_ext" \
         --global-option="--cuda_ext" ./

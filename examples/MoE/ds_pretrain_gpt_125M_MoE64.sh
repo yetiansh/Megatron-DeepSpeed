@@ -249,8 +249,8 @@ if [ "${USE_INTERNAL_DATA}" = "true" ]; then
     0.00208 ${NIH} 0.13017 ${CC2020} 0.09446 ${PCC} 0.15652 ${CC2021} \
     0.01359 ${ARX} 0.01588 ${GIT}"
 else
-    VOCAB_PATH=/Megatron-DeepSpeed/data/gpt2-vocab.json
-    MERGE_PATH=/Megatron-DeepSpeed/data/gpt2-merges.txt
+    VOCAB_PATH=/Megatron-DeepSpeed/gpt2-vocab.json
+    MERGE_PATH=/Megatron-DeepSpeed/gpt2-merges.txt
     # Public the Pile dataset, can be downloaded at https://mystic.the-eye.eu/public/AI/pile_neox/
     # For cluster Azure-EastUS-V100-32GB-4, Lab-RR1-V100
     DATA_BLEND=/Megatron-DeepSpeed/data/PhilPapersDataset_text_document
