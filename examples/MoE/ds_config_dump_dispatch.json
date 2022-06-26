@@ -1,0 +1,9 @@
+{
+    "gpt_125M": {
+        "dump_consecutive_iters": 50,
+        "dump_iter_interval": 4000
+    },
+    "gpt_350M": {
+
+    }
+}

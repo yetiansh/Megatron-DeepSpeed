@@ -85,15 +85,17 @@ GLOBAL_BATCH_SIZE=64
 ### Training duration configs
 ## The main termination condition, original GPT-3 paper trains for 300B tokens
 ## For MoE model, we found sometimes training a bit more to 330B tokens helps
-TRAIN_TOKENS=300000000000
-# TRAIN_TOKENS=330000000000
+# TRAIN_TOKENS=300000000000
+TRAIN_TOKENS=330000000000
 
 ## TRAIN_ITERS is another termination condition and also affect the number of 
 ## data samples to be indexed. Since we want to reach the TRAIN_TOKENS
 ## above, and techniques like curriculum learning has less token in some steps,
 ## so we just set this config large enough to make sure we have enough
 ## processed data and don't terminate by TRAIN_ITERS.
-TRAIN_ITERS=$(( ${TRAIN_TOKENS} * 3 / ${GLOBAL_BATCH_SIZE} / ${SEQ_LEN} ))
+# TRAIN_ITERS=$(( ${TRAIN_TOKENS} * 3 / ${GLOBAL_BATCH_SIZE} / ${SEQ_LEN} ))
+# we use 6000000 as total train iter, which is about 80% of total train iters.
+TRAIN_ITERS=6000000
 
 ## Another termination condition in minutes. Set it large enough to avoid
 ## undesired early termination.
@@ -203,6 +205,7 @@ OUTPUT_BASEPATH=$DIR/output
 mkdir -p "${OUTPUT_BASEPATH}/tensorboard/"
 mkdir -p "${OUTPUT_BASEPATH}/checkpoint/"
 mkdir -p "${OUTPUT_BASEPATH}/log/"
+mkdir -p "${OUTPUT_BASEPATH}/dispatch"
 TENSORBOARD_DIR="${OUTPUT_BASEPATH}/tensorboard/${NAME}_${host}_${current_time}"
 mkdir -p ${TENSORBOARD_DIR} 
 ## Note that for MoE model with billion-scale base model, the checkpoint can be
@@ -372,7 +375,9 @@ if [[ $ITERATION -gt 0 ]]; then
     ds_ssh "echo $ITERATION_2 > $ITERATION_FILE_2"
 fi
 
-DUMP_DISPATH_PREFIX=${OUTPUT_BASEPATH}/dispatch_${NAME}_${current_time}
+export DUMP_DISPATH_PREFIX=${OUTPUT_BASEPATH}/dispatch/dispatch_${NAME}_${current_time}
+export DUMP_MODEL_NAME="gpt_125M"
+export DUMP_CONFIG_PATH=${DIR}/ds_config_dump_dispatch.json
 
 run_cmd="deepspeed ${DIR}/../../pretrain_gpt.py ${megatron_options} ${data_options} ${deepspeed_options} &> ${OUTPUT_BASEPATH}/log/${NAME}_${host}_${current_time}.log"
 echo ${run_cmd}

@@ -75,6 +75,7 @@ RUN chown -R ${USER}:${USER} ${HOME}/.openmpi
 RUN python3 -m pip install --upgrade pip && python3 -m pip install tqdm
 
 # Download checkpoint and datasets for model training
+RUN echo "checkpoint"
 RUN git clone --recursive https://github.com/yetiansh/Megatron-DeepSpeed.git /Megatron-DeepSpeed && \
     cd /Megatron-DeepSpeed && git checkout origin/exp && \
     ./ds_download_ckpt.sh && python3 download_dataset.py
@@ -93,7 +94,7 @@ ENV STAGE_DIR=/tmp
 RUN mkdir -p ${STAGE_DIR}
 
 # Install DeepSpeed
-RUN echo "checkpoint"
+RUN echo "checkpoint_1"
 RUN git clone --recursive https://github.com/yetiansh/DeepSpeed.git ${STAGE_DIR}/DeepSpeed && \
     cd ${STAGE_DIR}/DeepSpeed && git checkout origin/exp && \
     ./install.sh --pip_sudo
