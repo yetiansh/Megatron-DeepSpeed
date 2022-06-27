@@ -253,9 +253,9 @@ else
     MERGE_PATH=/Megatron-DeepSpeed/gpt2-merges.txt
     # Public the Pile dataset, can be downloaded at https://mystic.the-eye.eu/public/AI/pile_neox/
     # For cluster Azure-EastUS-V100-32GB-4, Lab-RR1-V100
-    DATA_BLEND=/Megatron-DeepSpeed/data/PhilPapersDataset_text_document
+    DATA_BLEND=/Megatron-DeepSpeed/data/EuroParlDataset_text_document
     # For cluster Azure-WestUS3-A100
-    DATA_PATH=/Megatron-DeepSpeed/data/PhilPapersDataset_text_document
+    DATA_PATH=/Megatron-DeepSpeed/data/EuroParlDataset_text_document
 fi
 ###############################################################################
 data_options=" \

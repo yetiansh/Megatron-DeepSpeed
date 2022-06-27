@@ -14,6 +14,8 @@
 # limitations under the License.
 
 """Transformer."""
+import os
+import json
 import math
 import torch
 import torch.nn.functional as F
@@ -467,6 +469,15 @@ class ParallelTransformerLayer(MegatronModule):
                             eval_capacity_factor=args.moe_eval_capacity_factor,
                             min_capacity=args.moe_min_capacity,
                             drop_tokens=args.moe_token_dropping, use_tutel=args.use_tutel)
+            if "DUMP_DISPATH_PREFIX" in os.environ:
+                dump_dispatch_descr_file = os.environ["DUMP_DISPATH_PREFIX"] + "_descr.json"
+                with open(dump_dispatch_descr_file, "a") as writer:
+                    j = {
+                        "moe_layer_hash": hash(self),
+                        "layer_numer": layer_number,
+                    }
+                    writer.write(json.dumps(j) + "\n")
+
 
     def forward(self, hidden_states, attention_mask,
                 encoder_output=None, enc_dec_attn_mask=None,
@@ -617,7 +628,7 @@ class ParallelTransformer(MegatronModule):
 
         super(ParallelTransformer, self).__init__()
         args = get_args()
-    
+
         self.bf16 = args.bf16
         self.fp32_residual_connection = args.fp32_residual_connection
         self.pre_process = pre_process
