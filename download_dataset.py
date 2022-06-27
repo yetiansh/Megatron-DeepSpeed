@@ -4,7 +4,12 @@ import os
 import requests
 from tqdm import tqdm
 
-ALL_DATASETS = ["PhilPapersDataset_text_document", "EuroParlDataset_text_document"]
+ALL_DATASETS = [
+    "PhilPapersDataset_text_document", 
+    "EuroParlDataset_text_document",
+    "GutenbergDataset_text_document",
+    "HackerNewsDataset_text_document"
+]
 
 
 def download(*datasets, data_dir="/Megatron-DeepSpeed/data"):
