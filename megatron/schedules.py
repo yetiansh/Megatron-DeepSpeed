@@ -28,7 +28,6 @@ from megatron.model import DistributedDataParallel as LocalDDP
 from megatron.model import Float16Module
 from megatron.model import ModelType
 
-
 def get_forward_backward_func():
     args = get_args()
     if mpu.get_pipeline_model_parallel_world_size() > 1:
@@ -100,7 +99,7 @@ def custom_backward(output, grad_output):
         allow_unreachable=True,
         accumulate_grad=True,
     )
-        
+
 
 def forward_step(forward_step_func,
                  data_iterator,
@@ -683,18 +682,9 @@ def forward_backward_pipelining_without_interleaving(forward_step_func,
     for i in range(num_microbatches_remaining):
         last_iteration = (i == (num_microbatches_remaining - 1))
 
-        events = []
-        for i in range(8):
-            events.append(torch.cuda.Event())
-        for i in range(1):
-            events[i].record()
         output_tensor = forward_step(forward_step_func, data_iterator, model,
                                      input_tensor, forward_data_store,
                                      collect_non_loss_data)
-        for i in range(1, 8):
-            events[i].record()
-        for i in range(8):
-            events[i].synchronize()
         if forward_only:
             send_forward(output_tensor, send_tensor_shapes, timers=timers)
 
@@ -725,17 +715,9 @@ def forward_backward_pipelining_without_interleaving(forward_step_func,
                 send_backward(input_tensor_grad, recv_tensor_shapes, timers=timers)
             else:
                 events = []
-                for i in range(5):
-                    events.append(torch.cuda.Event())
-                for i in range(1):
-                    events[i].record()
                 input_tensor = \
                     send_backward_recv_forward(
                         input_tensor_grad, recv_tensor_shapes, timers=timers)
-                for i in range(1, 5):
-                    events[i].record()
-                for i in range(5):
-                    events[i].synchronize()
 
     # Run cooldown backward passes.
     if not forward_only:

@@ -30,6 +30,15 @@ from megatron.model import T5Model, ModelType
 from megatron.training import pretrain
 from megatron.utils import average_losses_across_data_parallel_group
 
+def add_multiple_event_sync(n):
+    events = []
+    for _ in range(n):
+        events.append(torch.cuda.Event())
+    for event in events:
+        event.record()
+    for event in events:
+        event.synchronize()
+
 
 """
 Pipeline parallelism for T5
@@ -87,24 +96,26 @@ def get_batch(data_iterator):
     keys = ['text_enc', 'text_dec', 'labels', 'loss_mask',
             'enc_mask', 'dec_mask', 'enc_dec_mask']
     datatype = torch.int64
-
+    add_multiple_event_sync(5)
     # Broadcast data.
     if data_iterator is not None:
         data = next(data_iterator)
     else:
         data = None
+    add_multiple_event_sync(6)
     data_b = mpu.broadcast_data(keys, data, datatype)
+    add_multiple_event_sync(7)
 
     # Unpack.
     tokens_enc = data_b['text_enc'].long()
     tokens_dec = data_b['text_dec'].long()
     labels = data_b['labels'].long()
     loss_mask = data_b['loss_mask'].float()
-
+    add_multiple_event_sync(8)
     enc_mask = (data_b['enc_mask'] < 0.5)
     dec_mask = (data_b['dec_mask'] < 0.5)
     enc_dec_mask = (data_b['enc_dec_mask'] < 0.5)
-
+    add_multiple_event_sync(9)
     return tokens_enc, tokens_dec, loss_mask, labels, \
            enc_mask, dec_mask, enc_dec_mask
 
@@ -139,7 +150,6 @@ def forward_step(data_iterator, model):
                           enc_dec_mask,
                           tokentype_ids=None,
                           lm_labels=lm_labels)
-
     return output_tensor, partial(loss_func, loss_mask)
 
 
