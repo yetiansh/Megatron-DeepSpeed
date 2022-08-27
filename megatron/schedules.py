@@ -65,7 +65,7 @@ def deallocate_output_tensor(out):
         device = out.device,
         dtype = out.dtype,
     )
-        
+
 def custom_backward(output, grad_output):
     '''Directly call C++ autograd engine.
 
@@ -602,8 +602,17 @@ def send_backward_recv_forward(input_tensor_grads, tensor_shapes, timers):
         if tensor_shape is None:
             input_tensors.append(None)
             continue
+        events = []
+        for i in range(4):
+            events.append(torch.cuda.Event())
+        for i in range(1):
+            events[i].record()
         input_tensor = p2p_communication.send_backward_recv_forward(
                 input_tensor_grad, tensor_shape, timers=timers)
+        for i in range(1, 4):
+            events[i].record()
+        for i in range(4):
+            events[i].synchronize()
         input_tensors.append(input_tensor)
     return input_tensors
 
@@ -674,9 +683,18 @@ def forward_backward_pipelining_without_interleaving(forward_step_func,
     for i in range(num_microbatches_remaining):
         last_iteration = (i == (num_microbatches_remaining - 1))
 
+        events = []
+        for i in range(8):
+            events.append(torch.cuda.Event())
+        for i in range(1):
+            events[i].record()
         output_tensor = forward_step(forward_step_func, data_iterator, model,
                                      input_tensor, forward_data_store,
                                      collect_non_loss_data)
+        for i in range(1, 8):
+            events[i].record()
+        for i in range(8):
+            events[i].synchronize()
         if forward_only:
             send_forward(output_tensor, send_tensor_shapes, timers=timers)
 
@@ -702,14 +720,22 @@ def forward_backward_pipelining_without_interleaving(forward_step_func,
             input_tensor_grad = \
                 backward_step(optimizer, input_tensor, output_tensor,
                               output_tensor_grad)
-
             if last_iteration:
                 input_tensor = None
                 send_backward(input_tensor_grad, recv_tensor_shapes, timers=timers)
             else:
+                events = []
+                for i in range(5):
+                    events.append(torch.cuda.Event())
+                for i in range(1):
+                    events[i].record()
                 input_tensor = \
                     send_backward_recv_forward(
                         input_tensor_grad, recv_tensor_shapes, timers=timers)
+                for i in range(1, 5):
+                    events[i].record()
+                for i in range(5):
+                    events[i].synchronize()
 
     # Run cooldown backward passes.
     if not forward_only:
