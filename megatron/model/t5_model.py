@@ -132,14 +132,11 @@ class T5Model(MegatronModule):
     def forward(self, encoder_input_ids, decoder_input_ids, encoder_attn_mask,
                 decoder_attn_mask, encoder_decoder_attn_mask,
                 tokentype_ids=None, lm_labels=None, enc_hidden_states=None):
-
         # Converting the attention masks to proper parameter settings
         encoder_attn_mask, decoder_attn_mask, encoder_decoder_attn_mask = t5_extended_attention_mask(
             [encoder_attn_mask, decoder_attn_mask, encoder_decoder_attn_mask])
-
         encoder_position_ids = t5_position_ids(encoder_input_ids)
         decoder_position_ids = t5_position_ids(decoder_input_ids)
-
         lm_output = self.language_model(encoder_input_ids,
                                         encoder_position_ids,
                                         encoder_attn_mask,
@@ -149,7 +146,6 @@ class T5Model(MegatronModule):
                                         encoder_decoder_attn_mask,
                                         tokentype_ids=tokentype_ids,
                                         enc_hidden_states=enc_hidden_states)
-
         if self.post_process and self.add_decoder:
             decoder_output, encoder_output = lm_output
             # Output. [s, b, h]
