@@ -15,9 +15,13 @@
 
 """Pretrain T5"""
 
-from functools import partial
+from functools import partial, reduce
+import gc
+import json
+import operator as op
 
 import torch
+from torch.distributed import get_rank
 
 from megatron import (
     get_args,
@@ -39,6 +43,66 @@ def add_multiple_event_sync(n):
     for event in events:
         event.synchronize()
 
+
+RESULTS = None
+COUNTER = 0
+
+def get_memory_usage():
+    global COUNTER
+    j = {}
+    j["micro_batch_index"] = COUNTER
+    total_bytes = 0
+    tensor_count = 0
+    total_tensor_bytes = 0
+    parameter_count = 0
+    total_parameter_bytes = 0
+    for obj in gc.get_objects():
+        try:
+            if torch.is_tensor(obj) or (hasattr(obj, "data") and torch.is_tensor(obj.data)):
+                type_ = str(type(obj))
+                bytes_ = obj.nelement() * obj.element_size()
+                if type_ == "<class 'torch.nn.parameter.Parameter'>":
+                    parameter_count += 1
+                    total_parameter_bytes += bytes_
+                elif type_ == "<class 'torch.Tensor'>":
+                    tensor_count += 1
+                    total_tensor_bytes += bytes_
+                else:
+                    pass
+                total_bytes += bytes_
+        except:
+            pass
+    j["total_bytes"] = total_bytes
+    j["total_bytes_in_gb"] = total_bytes / 1024 ** 3
+    j["tensor_count"] = tensor_count
+    j["total_tensor_bytes"] = total_tensor_bytes
+    j["total_tensor_bytes_in_gb"] = total_tensor_bytes / 1024 ** 3
+    j["parameter_count"] = parameter_count
+    j["total_parameter_bytes"] = total_parameter_bytes
+    j["total_parameter_bytes_in_gb"] = total_parameter_bytes / 1024 ** 3
+    COUNTER += 1
+    return json.dumps(j)
+
+def get_all_tensors():
+    j = []
+    for obj in gc.get_objects():
+        try:
+            if torch.is_tensor(obj) or (hasattr(obj, "data") and torch.is_tensor(obj.data)):
+                type_ = str(type(obj))
+                bytes_ = obj.nelement() * obj.element_size()
+                if type_ == "<class 'torch.nn.parameter.Parameter'>":
+                    parameter_count += 1
+                    total_parameter_bytes += bytes_
+                elif type_ == "<class 'torch.Tensor'>":
+                    tensor_count += 1
+                    total_tensor_bytes += bytes_
+                else:
+                    pass
+                total_bytes += bytes_
+        except:
+            pass
+    
+    return json.dumps(j, indent=4)
 
 """
 Pipeline parallelism for T5
@@ -92,32 +156,36 @@ def model_provider(pre_process=True, post_process=True,
 
 def get_batch(data_iterator):
     """Build the batch."""
+    global RESULTS
 
-    keys = ['text_enc', 'text_dec', 'labels', 'loss_mask',
-            'enc_mask', 'dec_mask', 'enc_dec_mask']
-    datatype = torch.int64
-    add_multiple_event_sync(5)
-    # Broadcast data.
-    if data_iterator is not None:
-        data = next(data_iterator)
-    else:
-        data = None
-    add_multiple_event_sync(6)
-    data_b = mpu.broadcast_data(keys, data, datatype)
-    add_multiple_event_sync(7)
+    if RESULTS is None or mpu.is_pipeline_first_stage():
+        keys = ['text_enc', 'text_dec', 'labels', 'loss_mask',
+                'enc_mask', 'dec_mask', 'enc_dec_mask']
+        datatype = torch.int64
+        add_multiple_event_sync(5)
+        # Broadcast data.
+        if data_iterator is not None:
+            data = next(data_iterator)
+        else:
+            data = None
+        add_multiple_event_sync(6)
+        data_b = mpu.broadcast_data(keys, data, datatype)
+        add_multiple_event_sync(7)
 
-    # Unpack.
-    tokens_enc = data_b['text_enc'].long()
-    tokens_dec = data_b['text_dec'].long()
-    labels = data_b['labels'].long()
-    loss_mask = data_b['loss_mask'].float()
-    add_multiple_event_sync(8)
-    enc_mask = (data_b['enc_mask'] < 0.5)
-    dec_mask = (data_b['dec_mask'] < 0.5)
-    enc_dec_mask = (data_b['enc_dec_mask'] < 0.5)
-    add_multiple_event_sync(9)
-    return tokens_enc, tokens_dec, loss_mask, labels, \
-           enc_mask, dec_mask, enc_dec_mask
+        # Unpack.
+        tokens_enc = data_b['text_enc'].long()
+        tokens_dec = data_b['text_dec'].long()
+        labels = data_b['labels'].long()
+        loss_mask = data_b['loss_mask'].float()
+        add_multiple_event_sync(8)
+        enc_mask = (data_b['enc_mask'] < 0.5)
+        dec_mask = (data_b['dec_mask'] < 0.5)
+        enc_dec_mask = (data_b['enc_dec_mask'] < 0.5)
+        add_multiple_event_sync(9)
+        RESULTS = [tokens_enc, tokens_dec, loss_mask, labels, \
+            enc_mask, dec_mask, enc_dec_mask]
+
+    return RESULTS
 
 
 def loss_func(loss_mask, output_tensor):
@@ -133,8 +201,18 @@ def loss_func(loss_mask, output_tensor):
 
 def forward_step(data_iterator, model):
     """Forward step."""
+    torch.cuda.empty_cache()
     args = get_args()
     timers = get_timers()
+
+    rank = get_rank()
+    with open(f"./memory_usage_{rank}.txt", "a") as writer:
+        writer.write(get_memory_usage() + "\n")
+    
+    global COUNTER
+    if COUNTER == 8:
+        with open(f"./all_tensors_{rank}.txt", "a") as writer:
+        writer.write(get_all_tensors() + "\n")
 
     # Get the batch.
     timers('batch generator').start()
