@@ -89,19 +89,14 @@ def get_all_tensors():
         try:
             if torch.is_tensor(obj) or (hasattr(obj, "data") and torch.is_tensor(obj.data)):
                 type_ = str(type(obj))
-                bytes_ = obj.nelement() * obj.element_size()
-                if type_ == "<class 'torch.nn.parameter.Parameter'>":
-                    parameter_count += 1
-                    total_parameter_bytes += bytes_
-                elif type_ == "<class 'torch.Tensor'>":
-                    tensor_count += 1
-                    total_tensor_bytes += bytes_
-                else:
-                    pass
-                total_bytes += bytes_
+                size_ = list(obj.size())
+                j.append({
+                    "type": type_,
+                    "size": size_,
+                })
         except:
             pass
-    
+
     return json.dumps(j, indent=4)
 
 """
@@ -201,7 +196,6 @@ def loss_func(loss_mask, output_tensor):
 
 def forward_step(data_iterator, model):
     """Forward step."""
-    torch.cuda.empty_cache()
     args = get_args()
     timers = get_timers()
 
@@ -212,7 +206,7 @@ def forward_step(data_iterator, model):
     global COUNTER
     if COUNTER == 8:
         with open(f"./all_tensors_{rank}.txt", "a") as writer:
-        writer.write(get_all_tensors() + "\n")
+            writer.write(get_all_tensors() + "\n")
 
     # Get the batch.
     timers('batch generator').start()
