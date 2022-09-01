@@ -153,8 +153,7 @@ def get_batch(data_iterator):
     """Build the batch."""
     global RESULTS
 
-    # if RESULTS is None or mpu.is_pipeline_first_stage():
-    if RESULTS is None:
+    if RESULTS is None or mpu.is_pipeline_first_stage():
         keys = ['text_enc', 'text_dec', 'labels', 'loss_mask',
                 'enc_mask', 'dec_mask', 'enc_dec_mask']
         datatype = torch.int64
@@ -195,15 +194,6 @@ def forward_step(data_iterator, model):
     """Forward step."""
     args = get_args()
     timers = get_timers()
-
-    rank = get_rank()
-    # with open(f"./memory_usage_{rank}.txt", "a") as writer:
-    #     writer.write(get_memory_usage() + "\n")
-
-    # global COUNTER
-    # if COUNTER == 8:
-    #     with open(f"./all_tensors_{rank}.txt", "a") as writer:
-    #         writer.write(get_all_tensors() + "\n")
 
     # Get the batch.
     timers('batch generator').start()
