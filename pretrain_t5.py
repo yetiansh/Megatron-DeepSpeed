@@ -153,7 +153,8 @@ def get_batch(data_iterator):
     """Build the batch."""
     global RESULTS
 
-    if RESULTS is None or mpu.is_pipeline_first_stage():
+    # if RESULTS is None or mpu.is_pipeline_first_stage():
+    if RESULTS is None:
         keys = ['text_enc', 'text_dec', 'labels', 'loss_mask',
                 'enc_mask', 'dec_mask', 'enc_dec_mask']
         datatype = torch.int64
@@ -163,20 +164,16 @@ def get_batch(data_iterator):
             data = next(data_iterator)
         else:
             data = None
-        add_multiple_event_sync(6)
         data_b = mpu.broadcast_data(keys, data, datatype)
-        add_multiple_event_sync(7)
 
         # Unpack.
         tokens_enc = data_b['text_enc'].long()
         tokens_dec = data_b['text_dec'].long()
         labels = data_b['labels'].long()
         loss_mask = data_b['loss_mask'].float()
-        add_multiple_event_sync(8)
         enc_mask = (data_b['enc_mask'] < 0.5)
         dec_mask = (data_b['dec_mask'] < 0.5)
         enc_dec_mask = (data_b['enc_dec_mask'] < 0.5)
-        add_multiple_event_sync(9)
         RESULTS = [tokens_enc, tokens_dec, loss_mask, labels, \
             enc_mask, dec_mask, enc_dec_mask]
 
@@ -200,13 +197,13 @@ def forward_step(data_iterator, model):
     timers = get_timers()
 
     rank = get_rank()
-    with open(f"./memory_usage_{rank}.txt", "a") as writer:
-        writer.write(get_memory_usage() + "\n")
-    
-    global COUNTER
-    if COUNTER == 8:
-        with open(f"./all_tensors_{rank}.txt", "a") as writer:
-            writer.write(get_all_tensors() + "\n")
+    # with open(f"./memory_usage_{rank}.txt", "a") as writer:
+    #     writer.write(get_memory_usage() + "\n")
+
+    # global COUNTER
+    # if COUNTER == 8:
+    #     with open(f"./all_tensors_{rank}.txt", "a") as writer:
+    #         writer.write(get_all_tensors() + "\n")
 
     # Get the batch.
     timers('batch generator').start()
