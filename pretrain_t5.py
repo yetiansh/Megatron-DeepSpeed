@@ -15,10 +15,14 @@
 
 """Pretrain T5"""
 
+from asyncore import write
+import os
 from functools import partial, reduce
 import gc
 import json
 import operator as op
+
+import psutil
 
 import torch
 from torch.distributed import get_rank
@@ -34,70 +38,34 @@ from megatron.model import T5Model, ModelType
 from megatron.training import pretrain
 from megatron.utils import average_losses_across_data_parallel_group
 
-def add_multiple_event_sync(n):
-    events = []
-    for _ in range(n):
-        events.append(torch.cuda.Event())
-    for event in events:
-        event.record()
-    for event in events:
-        event.synchronize()
-
-
 RESULTS = None
 COUNTER = 0
+DUMP_PATH=os.getenv("DUMP_MEMORY_USAGE")
 
-def get_memory_usage():
+def b2gb(b):
+    return round(b / (1024 ** 3), 2)
+
+def see_memory_usage():
+    # python doesn't do real-time garbage collection so do it explicitly to get the correct RAM reports
+    gc.collect()
+
     global COUNTER
-    j = {}
-    j["micro_batch_index"] = COUNTER
-    total_bytes = 0
-    tensor_count = 0
-    total_tensor_bytes = 0
-    parameter_count = 0
-    total_parameter_bytes = 0
-    for obj in gc.get_objects():
-        try:
-            if torch.is_tensor(obj) or (hasattr(obj, "data") and torch.is_tensor(obj.data)):
-                type_ = str(type(obj))
-                bytes_ = obj.nelement() * obj.element_size()
-                if type_ == "<class 'torch.nn.parameter.Parameter'>":
-                    parameter_count += 1
-                    total_parameter_bytes += bytes_
-                elif type_ == "<class 'torch.Tensor'>":
-                    tensor_count += 1
-                    total_tensor_bytes += bytes_
-                else:
-                    pass
-                total_bytes += bytes_
-        except:
-            pass
-    j["total_bytes"] = total_bytes
-    j["total_bytes_in_gb"] = total_bytes / 1024 ** 3
-    j["tensor_count"] = tensor_count
-    j["total_tensor_bytes"] = total_tensor_bytes
-    j["total_tensor_bytes_in_gb"] = total_tensor_bytes / 1024 ** 3
-    j["parameter_count"] = parameter_count
-    j["total_parameter_bytes"] = total_parameter_bytes
-    j["total_parameter_bytes_in_gb"] = total_parameter_bytes / 1024 ** 3
+    # Print message except when distributed but not rank 0
+    j = {
+        "micro_batch_index": COUNTER,
+        "memory_allocated": b2gb(torch.cuda.memory_allocated()),
+        "max_memory_allocated": b2gb(torch.cuda.max_memory_allocated()),
+        "memory_reserved": b2gb(torch.cuda.memory_reserved()),
+        "max_memory_reserved": b2gb(torch.cuda.max_memory_reserved()),
+    }
+    with open(DUMP_PATH, "a") as writer:
+        writer.write(json.dumps(j))
+
+    # get the peak memory to report correct data, so reset the counter for the next call
+    if hasattr(torch.cuda, "reset_peak_memory_stats"):  # pytorch 1.4+
+        torch.cuda.reset_peak_memory_stats()
+
     COUNTER += 1
-    return json.dumps(j)
-
-def get_all_tensors():
-    j = []
-    for obj in gc.get_objects():
-        try:
-            if torch.is_tensor(obj) or (hasattr(obj, "data") and torch.is_tensor(obj.data)):
-                type_ = str(type(obj))
-                size_ = list(obj.size())
-                j.append({
-                    "type": type_,
-                    "size": size_,
-                })
-        except:
-            pass
-
-    return json.dumps(j, indent=4)
 
 """
 Pipeline parallelism for T5
@@ -157,7 +125,6 @@ def get_batch(data_iterator):
         keys = ['text_enc', 'text_dec', 'labels', 'loss_mask',
                 'enc_mask', 'dec_mask', 'enc_dec_mask']
         datatype = torch.int64
-        add_multiple_event_sync(5)
         # Broadcast data.
         if data_iterator is not None:
             data = next(data_iterator)
@@ -201,6 +168,7 @@ def forward_step(data_iterator, model):
         = get_batch(data_iterator)
     timers('batch generator').stop()
 
+    see_memory_usage()
     # Forward model lm_labels
     output_tensor = model(tokens_enc,
                           tokens_dec,
