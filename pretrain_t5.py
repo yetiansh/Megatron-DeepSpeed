@@ -39,7 +39,7 @@ from megatron.training import pretrain
 from megatron.utils import average_losses_across_data_parallel_group
 
 RESULTS = None
-COUNTER = 0
+COUNTER = -1
 DUMP_PATH=os.getenv("DUMP_MEMORY_USAGE")
 
 def b2gb(b):
@@ -50,13 +50,32 @@ def see_memory_usage():
     gc.collect()
 
     global COUNTER
+    COUNTER += 1
     # Print message except when distributed but not rank 0
+    total_bytes = 0
+    total_tensor_bytes = 0
+    total_parameter_bytes = 0
+    for obj in gc.get_objects():
+        try:
+            if torch.is_tensor(obj) or (hasattr(obj, "data") and torch.is_tensor(obj.data)):
+                type_ = str(type(obj))
+                bytes_ = obj.nelement() * obj.element_size()
+                if type_ == "<class 'torch.nn.parameter.Parameter'>":
+                    total_parameter_bytes += bytes_
+                elif type_ == "<class 'torch.Tensor'>":
+                    total_tensor_bytes += bytes_
+                total_bytes += bytes_
+        except:
+            pass
     j = {
         "micro_batch_index": COUNTER,
         "memory_allocated": b2gb(torch.cuda.memory_allocated()),
         "max_memory_allocated": b2gb(torch.cuda.max_memory_allocated()),
         "memory_reserved": b2gb(torch.cuda.memory_reserved()),
         "max_memory_reserved": b2gb(torch.cuda.max_memory_reserved()),
+        "parameter_memory": b2gb(total_parameter_bytes),
+        "activation_memory": b2gb(total_tensor_bytes),
+        "total_tensor_memory": b2gb(total_bytes),
     }
     with open(DUMP_PATH, "a") as writer:
         writer.write(json.dumps(j))
@@ -64,8 +83,6 @@ def see_memory_usage():
     # get the peak memory to report correct data, so reset the counter for the next call
     if hasattr(torch.cuda, "reset_peak_memory_stats"):  # pytorch 1.4+
         torch.cuda.reset_peak_memory_stats()
-
-    COUNTER += 1
 
 """
 Pipeline parallelism for T5
