@@ -20,6 +20,8 @@ import os
 
 import torch
 
+from fmoe.megatron import add_fmoe_args as _add_fmoe_args
+
 def parse_args(extra_args_provider=None, defaults={},
                ignore_unknown_args=False):
     """Parse all arguments."""
@@ -42,6 +44,7 @@ def parse_args(extra_args_provider=None, defaults={},
     parser = _add_vision_args(parser)
     parser = _add_logging_args(parser)
     parser = _add_inference_args(parser)
+    parser = _add_fmoe_args(parser)
 
     # Custom arguments.
     if extra_args_provider is not None:

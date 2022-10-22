@@ -54,6 +54,7 @@ def clip_grad_norm_fp32(parameters, max_norm, norm_type=2):
     #   - should not be a replica due to tensor model parallelism
     grads = []
     grads_for_norm = []
+    grads_in_moe = []
     for param in parameters:
         grad_not_none = param.grad is not None
         is_not_shared = param_is_not_shared(param)
@@ -65,7 +66,10 @@ def clip_grad_norm_fp32(parameters, max_norm, norm_type=2):
             assert param.grad.type() == 'torch.cuda.FloatTensor'
             grads.append(grad)
         if grad_not_none and is_not_shared and is_not_tp_duplicate:
-            grads_for_norm.append(grad)
+            if hasattr(param, 'dp_comm') and param.dp_comm in ('none'):
+                grads_in_moe.append(grad)
+            else:
+                grads_for_norm.append(grad)
 
     # Norm parameters.
     max_norm = float(max_norm)
@@ -97,6 +101,16 @@ def clip_grad_norm_fp32(parameters, max_norm, norm_type=2):
             # Since we will be summing across data parallel groups,
             # we need the pow(norm-type).
             total_norm = grad_norm ** norm_type
+
+            grad_norm, _ = multi_tensor_applier(
+                amp_C.multi_tensor_l2norm,
+                dummy_overflow_buf,
+                [grads_in_moe],
+                False # no per-parameter norm
+            )
+            grad_norm = grad_norm ** norm_type
+            torch.distributed.all_reduce(grad_norm)
+            total_norm += grad_norm
 
         else:
             for grad in grads_for_norm:

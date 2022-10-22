@@ -36,8 +36,10 @@ from megatron import update_num_microbatches
 from megatron import mpu
 from megatron import print_rank_0
 from megatron import print_rank_last
-from megatron.checkpointing import load_checkpoint
-from megatron.checkpointing import save_checkpoint
+# from megatron.checkpointing import load_checkpoint
+from fmoe.megatron.checkpoint import load_checkpoint
+# from megatron.checkpointing import save_checkpoint
+from fmoe.megatron.checkpoint import save_checkpoint
 from megatron.model import Float16Module
 from megatron.model import ModelType
 from megatron.optimizer import get_megatron_optimizer
@@ -45,7 +47,7 @@ from megatron.initialize import initialize_megatron
 from megatron.initialize import write_args_to_tensorboard
 from megatron.initialize import set_jit_fusion_options
 from megatron.optimizer_param_scheduler import OptimizerParamScheduler
-from megatron.model import DistributedDataParallel as LocalDDP
+# from megatron.model import DistributedDataParallel as LocalDDP
 from megatron.utils import check_adlr_autoresume_termination
 from megatron.utils import unwrap_model
 from megatron.data.data_samplers import build_pretraining_data_loader
@@ -53,6 +55,9 @@ from megatron.utils import calc_params_l2_norm
 from megatron.schedules import get_forward_backward_func
 from megatron.utils import report_memory
 from megatron.model.vision.knn_monitor import compute_feature_bank
+
+from fmoe.megatron import DistributedDataParallel as LocalDDP
+from fmoe.megatron import add_balance_log
 
 
 def print_datetime(string):
@@ -118,6 +123,13 @@ def pretrain(train_valid_test_dataset_provider,
 
     args = get_args()
     timers = get_timers()
+
+    # Initialize FastMoE
+    if args.fmoefy:
+        from fmoe.megatron import patch_forward_step, patch_model_provider
+
+        forward_step_func = patch_forward_step(forward_step_func)
+        model_provider = patch_model_provider(model_provider)
 
     # Model, optimizer, and learning rate.
     timers('model-and-optimizer-setup').start()
@@ -530,7 +542,7 @@ def train_step(forward_step_func, data_iterator,
 
 def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
                  loss_scale, report_memory_flag, skipped_iter,
-                 grad_norm, params_norm, num_zeros_in_grad):
+                 grad_norm, params_norm, num_zeros_in_grad, model):
     """Log training information such as losses, timing, ...."""
     args = get_args()
     timers = get_timers()
@@ -595,6 +607,9 @@ def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
 
     total_iterations = total_loss_dict[advanced_iters_key] + \
                        total_loss_dict[skipped_iters_key]
+
+    if args.fmoefy and args.balance_strategy and args.balance_strategy != "naive":
+        add_balance_log(model, writer, iteration)
 
     # Tensorboard values.
     if writer and (iteration % args.tensorboard_log_interval == 0 ) and \
@@ -757,7 +772,7 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
                                           optimizer.param_groups[0]['lr'],
                                           iteration, loss_scale,
                                           report_memory_flag, skipped_iter,
-                                          grad_norm, params_norm, num_zeros_in_grad)
+                                          grad_norm, params_norm, num_zeros_in_grad, model)
 
         # Autoresume
         if args.adlr_autoresume and \
