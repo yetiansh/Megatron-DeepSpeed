@@ -76,6 +76,7 @@ def forward_step(data_iterator, model):
     """Forward step."""
     timers = get_timers()
 
+    print_rank_0("start forward step")
     # Get the batch.
     timers("batch-generator").start()
     (
@@ -86,6 +87,8 @@ def forward_step(data_iterator, model):
 
     # Forward model. lm_labels
     output_tensor = model(images)
+
+    print_rank_0("complete forward step")
 
     return output_tensor, partial(loss_func, labels)
 
