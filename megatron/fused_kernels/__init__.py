@@ -47,6 +47,7 @@ def load(args):
         return cpp_extension.load(
             name=name,
             sources=sources,
+            extra_include_paths=['/usr/include'],
             build_directory=buildpath,
             extra_cflags=['-O3',],
             extra_cuda_cflags=['-O3',
