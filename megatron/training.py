@@ -59,9 +59,6 @@ from megatron.model.vision.knn_monitor import compute_feature_bank
 from fmoe.megatron import DistributedDataParallel as LocalDDP
 from fmoe.megatron import add_balance_log
 
-# import raf's cuda profiler API
-from raf.utils.profiler import cuda_profiler_start, cuda_profiler_stop
-
 
 def print_datetime(string):
     """Note that this call will sync across all ranks."""
@@ -752,7 +749,6 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
     timers('interval-time').start()
     print_datetime('before the start of training step')
     report_memory_flag = True
-    cuda_profiler_start()
     TRAIN_ITER_START_TIME = time.time()
     while iteration < args.train_iters:
         update_num_microbatches(args.consumed_train_samples)
@@ -835,7 +831,6 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
             sys.exit()
 
     TRAIN_ITER_END_TIME = time.time()
-    cuda_profiler_stop()
     TRAIN_ITER_TIME = TRAIN_ITER_END_TIME - TRAIN_ITER_START_TIME
     print_rank_0(f"Training time: {TRAIN_ITER_TIME}")
 
