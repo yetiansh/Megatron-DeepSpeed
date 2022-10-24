@@ -230,13 +230,13 @@ def build_train_valid_datasets(data_path, image_size=224):
 
     if args.vision_pretraining_type == 'classify':
         train_transform = ClassificationTransform(image_size)
-        val_transform = ClassificationTransform(image_size, train=False)
+        # val_transform = ClassificationTransform(image_size, train=False)
     elif args.vision_pretraining_type == 'inpaint':
         train_transform = InpaintingTransform(image_size, train=False)
-        val_transform = InpaintingTransform(image_size, train=False)
+        # val_transform = InpaintingTransform(image_size, train=False)
     elif args.vision_pretraining_type == 'dino':
         train_transform = DinoTransform(image_size, train=True)
-        val_transform = ClassificationTransform(image_size, train=False)
+        # val_transform = ClassificationTransform(image_size, train=False)
     else:
         raise Exception('{} vit pretraining type is not supported.'.format(
                 args.vit_pretraining_type))
@@ -252,11 +252,11 @@ def build_train_valid_datasets(data_path, image_size=224):
     train_data = RandomSeedDataset(train_data)
 
     # validation dataset
-    val_data_path = data_path[1]
-    val_data = ImageFolder(
-        root=val_data_path,
-        transform=val_transform
-    )
-    val_data = RandomSeedDataset(val_data)
+    # val_data_path = data_path[1]
+    # val_data = ImageFolder(
+    #     root=val_data_path,
+    #     transform=val_transform
+    # )
+    # val_data = RandomSeedDataset(val_data)
 
-    return train_data, val_data
+    return train_data, None
