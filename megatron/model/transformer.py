@@ -14,6 +14,7 @@
 # limitations under the License.
 
 """Transformer."""
+import os
 import math
 from contextlib import nullcontext
 import torch
@@ -586,7 +587,8 @@ class ParallelTransformerLayer(MegatronModule):
                 sequence_parallel=args.sequence_parallel)
 
         # MLP
-        if args.num_experts is not None:
+        interval = os.getenv("MOE_EXPERT_INTERVAL")
+        if args.num_experts is not None and layer_number % interval == 0:
             self.mlp = SwitchMLP(init_method, output_layer_init_method)
         else:
             self.mlp = ParallelMLP(init_method, output_layer_init_method)
