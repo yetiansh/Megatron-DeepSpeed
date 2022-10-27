@@ -157,23 +157,23 @@ def pretrain(train_valid_test_dataset_provider,
                           process_non_loss_data_func)
     print_datetime('after training is done')
 
-    if args.do_valid:
-        prefix = 'the end of training for val data'
-        evaluate_and_print_results(prefix, forward_step_func,
-                                   valid_data_iterator, model,
-                                   iteration, process_non_loss_data_func,
-                                   False)
+    # if args.do_valid:
+    #     prefix = 'the end of training for val data'
+    #     evaluate_and_print_results(prefix, forward_step_func,
+    #                                valid_data_iterator, model,
+    #                                iteration, process_non_loss_data_func,
+    #                                False)
 
-    if args.save and iteration != 0:
-        save_checkpoint(iteration, model, optimizer, opt_param_scheduler)
+    # if args.save and iteration != 0:
+    #     save_checkpoint(iteration, model, optimizer, opt_param_scheduler)
 
-    if args.do_test:
-        # Run on test data.
-        prefix = 'the end of training for test data'
-        evaluate_and_print_results(prefix, forward_step_func,
-                                   test_data_iterator, model,
-                                   0, process_non_loss_data_func,
-                                   True)
+    # if args.do_test:
+    #     # Run on test data.
+    #     prefix = 'the end of training for test data'
+    #     evaluate_and_print_results(prefix, forward_step_func,
+    #                                test_data_iterator, model,
+    #                                0, process_non_loss_data_func,
+    #                                True)
 
 def update_train_iters(args):
 
@@ -759,57 +759,57 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
                                           report_memory_flag, skipped_iter,
                                           grad_norm, params_norm, num_zeros_in_grad)
 
-        # Autoresume
-        if args.adlr_autoresume and \
-           (iteration % args.adlr_autoresume_interval == 0):
-            check_adlr_autoresume_termination(iteration, model, optimizer,
-                                              opt_param_scheduler)
+        # # Autoresume
+        # if args.adlr_autoresume and \
+        #    (iteration % args.adlr_autoresume_interval == 0):
+        #     check_adlr_autoresume_termination(iteration, model, optimizer,
+        #                                       opt_param_scheduler)
 
-        # Evaluation
-        if args.eval_interval and iteration % args.eval_interval == 0 and \
-           args.do_valid:
-            prefix = 'iteration {}'.format(iteration)
-            evaluate_and_print_results(prefix, forward_step_func,
-                                       valid_data_iterator, model,
-                                       iteration, process_non_loss_data_func,
-                                       False)
+        # # Evaluation
+        # if args.eval_interval and iteration % args.eval_interval == 0 and \
+        #    args.do_valid:
+        #     prefix = 'iteration {}'.format(iteration)
+        #     evaluate_and_print_results(prefix, forward_step_func,
+        #                                valid_data_iterator, model,
+        #                                iteration, process_non_loss_data_func,
+        #                                False)
 
-        # Checkpointing
-        saved_checkpoint = False
-        if args.exit_signal_handler:
-            signal_handler = get_signal_handler()
-            if any(signal_handler.signals_received()):
-                save_checkpoint_and_time(iteration, model, optimizer,
-                                         opt_param_scheduler)
-                print_datetime('exiting program after receiving SIGTERM.')
-                sys.exit()
+        # # Checkpointing
+        # saved_checkpoint = False
+        # if args.exit_signal_handler:
+        #     signal_handler = get_signal_handler()
+        #     if any(signal_handler.signals_received()):
+        #         save_checkpoint_and_time(iteration, model, optimizer,
+        #                                  opt_param_scheduler)
+        #         print_datetime('exiting program after receiving SIGTERM.')
+        #         sys.exit()
 
-        if args.save and args.save_interval and \
-           iteration % args.save_interval == 0:
-            save_checkpoint_and_time(iteration, model, optimizer,
-                                     opt_param_scheduler)
-            saved_checkpoint = True
+        # if args.save and args.save_interval and \
+        #    iteration % args.save_interval == 0:
+        #     save_checkpoint_and_time(iteration, model, optimizer,
+        #                              opt_param_scheduler)
+        #     saved_checkpoint = True
 
-        # Exiting based on duration
-        if args.exit_duration_in_mins:
-            train_time = (time.time() - _TRAIN_START_TIME) / 60.0
-            done_cuda = torch.cuda.IntTensor(
-                [train_time > args.exit_duration_in_mins])
-            torch.distributed.all_reduce(
-                done_cuda, op=torch.distributed.ReduceOp.MAX)
-            done = done_cuda.item()
-            if done:
-                if not saved_checkpoint:
-                    save_checkpoint_and_time(iteration, model, optimizer,
-                                             opt_param_scheduler)
-                print_datetime('exiting program after {} minutes'.format(train_time))
-                sys.exit()
+        # # Exiting based on duration
+        # if args.exit_duration_in_mins:
+        #     train_time = (time.time() - _TRAIN_START_TIME) / 60.0
+        #     done_cuda = torch.cuda.IntTensor(
+        #         [train_time > args.exit_duration_in_mins])
+        #     torch.distributed.all_reduce(
+        #         done_cuda, op=torch.distributed.ReduceOp.MAX)
+        #     done = done_cuda.item()
+        #     if done:
+        #         if not saved_checkpoint:
+        #             save_checkpoint_and_time(iteration, model, optimizer,
+        #                                      opt_param_scheduler)
+        #         print_datetime('exiting program after {} minutes'.format(train_time))
+        #         sys.exit()
 
         # Exiting based on iterations
         if args.exit_interval and iteration % args.exit_interval == 0:
-            if not saved_checkpoint:
-                save_checkpoint_and_time(iteration, model, optimizer,
-                                         opt_param_scheduler)
+            # if not saved_checkpoint:
+            #     save_checkpoint_and_time(iteration, model, optimizer,
+            #                              opt_param_scheduler)
             torch.distributed.barrier()
             print_datetime('exiting program at iteration {}'.format(iteration))
             sys.exit()
